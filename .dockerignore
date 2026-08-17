@@ -1,0 +1,11 @@
+.git
+.venv
+.pytest_cache
+.ruff_cache
+.github
+assets
+out
+state
+tests
+Makefile
+README.md

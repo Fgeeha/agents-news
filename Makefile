@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install gateway run run-once lint format test check clean
+.PHONY: help install gateway run run-once lint format test check image run-image clean
 
 # ---------- Справка ----------
 
@@ -35,6 +35,18 @@ test: ## Запустить тесты
 	uv run pytest -q
 
 check: lint test ## Линт и тесты разом
+
+# ---------- Docker ----------
+
+image: ## Собрать Docker-образ agents-news
+	docker build -t agents-news .
+
+run-image: ## Запустить пайплайн в контейнере (шлюз и Ollama — на хосте)
+	docker run --rm --network host \
+	  -v $(CURDIR)/config.yaml:/app/config.yaml:ro \
+	  -v $(CURDIR)/state:/app/state \
+	  -v $(CURDIR)/out:/app/out \
+	  agents-news
 
 # ---------- Обслуживание ----------
 
