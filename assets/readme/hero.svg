@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340" viewBox="0 0 1200 340" role="img" aria-labelledby="title desc">
+  <title id="title">agents-news</title>
+  <desc id="desc">Новостной конвейер на локальных моделях: три эксперта переписывают новости, независимый рецензент ставит вердикт ПРИНЯТО.</desc>
+
+  <rect width="1200" height="340" rx="24" fill="#0b0e14"/>
+  <rect x="0.75" y="0.75" width="1198.5" height="338.5" rx="23.5" fill="none" stroke="#1c2230" stroke-width="1.5"/>
+
+  <g id="title-block" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+    <text x="64" y="84" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="19" letter-spacing="2" fill="#d29922">НОВОСТНОЙ КОНВЕЙЕР НА ЛОКАЛЬНЫХ МОДЕЛЯХ</text>
+    <text x="60" y="156" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="62" font-weight="700" fill="#e8e6e0">agents-news</text>
+    <text x="64" y="205" font-size="23" fill="#b8b4ab">Три эксперта переписывают новости из RSS —</text>
+    <text x="64" y="237" font-size="23" fill="#b8b4ab">каждый для своей аудитории. Независимый</text>
+    <text x="64" y="269" font-size="23" fill="#b8b4ab">рецензент на другой модели ставит вердикт.</text>
+    <text x="64" y="308" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="17" fill="#8b949e">python 3.11+ · uv · ollama · litellm · rss</text>
+  </g>
+
+  <g id="project-proof">
+    <!-- три экспертные полосы -->
+    <g transform="translate(770,62)">
+      <rect width="366" height="50" rx="10" fill="#3fb950" fill-opacity="0.09" stroke="#3fb950" stroke-opacity="0.75" stroke-width="1.5"/>
+      <rect width="7" height="50" rx="3.5" fill="#3fb950"/>
+      <text x="24" y="32" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="20" fill="#e8e6e0">эксперт · агрономия</text>
+    </g>
+    <g transform="translate(770,128)">
+      <rect width="366" height="50" rx="10" fill="#58a6ff" fill-opacity="0.09" stroke="#58a6ff" stroke-opacity="0.75" stroke-width="1.5"/>
+      <rect width="7" height="50" rx="3.5" fill="#58a6ff"/>
+      <text x="24" y="32" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="20" fill="#e8e6e0">эксперт · IT</text>
+    </g>
+    <g transform="translate(770,194)">
+      <rect width="366" height="50" rx="10" fill="#f47067" fill-opacity="0.09" stroke="#f47067" stroke-opacity="0.75" stroke-width="1.5"/>
+      <rect width="7" height="50" rx="3.5" fill="#f47067"/>
+      <text x="24" y="32" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="20" fill="#e8e6e0">эксперт · здоровье</text>
+    </g>
+    <!-- штамп рецензента -->
+    <g transform="translate(975,205) rotate(-8)">
+      <rect x="-6" y="-6" width="212" height="74" rx="10" fill="#0b0e14" fill-opacity="0.55"/>
+      <rect width="200" height="62" rx="8" fill="none" stroke="#d29922" stroke-width="3"/>
+      <rect x="6" y="6" width="188" height="50" rx="5" fill="none" stroke="#d29922" stroke-width="1.5" stroke-opacity="0.7"/>
+      <text x="100" y="41" text-anchor="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="28" font-weight="700" letter-spacing="5" fill="#d29922">ПРИНЯТО</text>
+    </g>
+  </g>
+</svg>
