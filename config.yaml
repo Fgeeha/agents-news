@@ -1,0 +1,50 @@
+# Конфигурация пайплайна. Имена моделей — алиасы из litellm.config.yaml:
+# код не знает, какая модель за ними стоит, замена модели = правка одного файла шлюза.
+gateway:
+  base_url: http://localhost:4000/v1
+  api_key: sk-local        # заглушка для локального шлюза без аутентификации;
+                           # реальный ключ задаётся переменной LITELLM_API_KEY
+  timeout: 300
+
+feeds:
+  - https://lenta.ru/rss/news
+  - https://habr.com/ru/rss/news/
+  # Волгоградские источники (проверены 2026-08-17)
+  - https://v1.ru/text/rss.xml
+  - https://bloknot-volgograd.ru/rss_news.php
+  - https://vpravda.ru/rss.xml
+  - https://www.volgograd.kp.ru/rss/allsections.xml
+  - https://riac34.ru/rss/
+  # Государственные источники (проверены 2026-08-17)
+  - https://volgoduma.ru/rss/            # Волгоградская областная дума
+  - http://kremlin.ru/events/all/feed    # Президент РФ
+  - http://government.ru/all/rss/        # Правительство РФ
+
+limit_per_feed: 10
+state_file: state/seen.json
+output_dir: out
+
+models:
+  gate: gate               # дешёвая модель — фильтр «относится ли новость к теме»
+  reviewer: reviewer       # ДРУГОЕ семейство моделей — независимая проверка
+  embed: embed             # эмбеддинги для поиска дублей между сайтами
+
+experts:
+  - name: agro
+    title: Эксперт по агрономии
+    domain: >-
+      сельское хозяйство, агрономия, растениеводство, животноводство,
+      удобрения, урожай, агротехника, продовольственная безопасность
+    model: expert
+  - name: it
+    title: Эксперт по информационным технологиям
+    domain: >-
+      IT, программное обеспечение, интернет, кибербезопасность,
+      искусственный интеллект, гаджеты, телеком, стартапы
+    model: expert
+  - name: health
+    title: Эксперт по медицине и здоровью
+    domain: >-
+      медицина, здоровье, фармацевтика, эпидемиология, здравоохранение,
+      питание, спорт и физическая активность, психология
+    model: expert
