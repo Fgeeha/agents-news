@@ -7,15 +7,17 @@ from agents_news.pipeline import Expert, process_item
 
 
 class FakeLLM:
-    """ask: гейт отвечает ДА только эксперту it; рецензия — по полю review_answer.
-    embed: вектор задаётся словарём vectors, незнакомый текст роняет KeyError."""
+    """ask: гейт отвечает ДА только эксперту it; рецензии выдаются по очереди
+    из review_answers (последний ответ повторяется). embed: вектор задаётся
+    словарём vectors, незнакомый текст роняет KeyError."""
 
-    def __init__(self, review_answer: str = "ВЕРДИКТ: ПРИНЯТО\n- замечаний нет",
+    def __init__(self, review_answers: list[str] | None = None,
                  vectors: dict[str, list[float]] | None = None,
                  confirm_dup: str = "НЕТ") -> None:
-        self.review_answer = review_answer
+        self.review_answers = review_answers or ["ВЕРДИКТ: ПРИНЯТО\n- замечаний нет"]
         self.vectors = vectors or {}
         self.confirm_dup = confirm_dup
+        self.revise_calls = 0
 
     def ask(self, model: str, system: str, user: str, temperature: float = 0.3) -> str:
         if "фильтр тем" in system:
@@ -23,7 +25,13 @@ class FakeLLM:
         if "фильтр дублей" in system:
             return self.confirm_dup
         if "фактчекер" in system:
-            return self.review_answer
+            answer = self.review_answers[0]
+            if len(self.review_answers) > 1:
+                self.review_answers.pop(0)
+            return answer
+        if "отклонил твою статью" in system:
+            self.revise_calls += 1
+            return "Исправленный текст статьи."
         return "Переработанный текст статьи."
 
     def embed(self, model: str, texts: list[str]) -> list[list[float]]:
@@ -63,15 +71,35 @@ def test_only_relevant_expert_writes_article(tmp_path: Path) -> None:
     assert not any(p.name == "agro" for p in tmp_path.rglob("*") if p.is_dir())
 
 
-def test_rejected_article_goes_to_rejected_subdir(tmp_path: Path) -> None:
+def test_rejected_twice_goes_to_rejected_subdir(tmp_path: Path) -> None:
     config = dict(CONFIG, output_dir=str(tmp_path))
-    llm = FakeLLM(review_answer="ВЕРДИКТ: ОТКЛОНЕНО\n- выдуманы факты")
+    llm = FakeLLM(review_answers=["ВЕРДИКТ: ОТКЛОНЕНО\n- выдуманы факты"])
     written = process_item(llm, config, ITEM)
 
     assert len(written) == 1
     assert written[0].parent.name == "rejected"
     assert written[0].parent.parent.name == "it"
-    assert "verdict: ОТКЛОНЕНО" in written[0].read_text(encoding="utf-8")
+    assert llm.revise_calls == 1  # одна доработка была, но не помогла
+    text = written[0].read_text(encoding="utf-8")
+    assert "verdict: ОТКЛОНЕНО" in text
+    assert "revisions: 1" in text
+
+
+def test_revision_after_rejection_gets_accepted(tmp_path: Path) -> None:
+    config = dict(CONFIG, output_dir=str(tmp_path))
+    llm = FakeLLM(review_answers=[
+        "ВЕРДИКТ: ОТКЛОНЕНО\n- выдуманы факты",
+        "ВЕРДИКТ: ПРИНЯТО\n- замечания устранены",
+    ])
+    written = process_item(llm, config, ITEM)
+
+    assert len(written) == 1
+    assert written[0].parent.name == "it"  # принято после доработки, не rejected/
+    assert llm.revise_calls == 1
+    text = written[0].read_text(encoding="utf-8")
+    assert "verdict: ПРИНЯТО" in text
+    assert "revisions: 1" in text
+    assert "Исправленный текст статьи." in text
 
 
 def test_deduper_jaccard_and_embedding_cascade() -> None:

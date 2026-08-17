@@ -40,6 +40,19 @@ REVIEW_USER = (
     "СТАТЬЯ ЭКСПЕРТА:\n{article}"
 )
 
+MAX_REVISIONS = 1  # сколько раз эксперт дорабатывает статью после ОТКЛОНЕНО
+
+REVISE_SYSTEM = (
+    "Ты — {title}. Рецензент отклонил твою статью по новости. Исправь её по "
+    "замечаниям: убери факты, которых нет в исходной новости, и искажения "
+    "смысла. Используй только факты исходника. Пиши по-русски, 3–5 абзацев, "
+    "без приветствий и преамбул. Верни только текст исправленной статьи."
+)
+REVISE_USER = (
+    "ИСХОДНАЯ НОВОСТЬ:\nЗаголовок: {news_title}\nТекст: {summary}\n\n"
+    "ТВОЯ СТАТЬЯ:\n{article}\n\nЗАМЕЧАНИЯ РЕЦЕНЗЕНТА:\n{notes}"
+)
+
 
 @dataclass(frozen=True)
 class Expert:
@@ -93,13 +106,28 @@ def review(llm: LLM, reviewer_model: str, expert: Expert, item: NewsItem,
     return {"verdict": verdict, "notes": rest.strip() or first_line.strip()}
 
 
+def revise(llm: LLM, expert: Expert, item: NewsItem, article: str,
+           notes: str) -> str:
+    """Доработать отклонённую статью по замечаниям рецензента."""
+    return llm.ask(
+        expert.model,
+        REVISE_SYSTEM.format(title=expert.title),
+        REVISE_USER.format(
+            news_title=item.title, summary=item.summary,
+            article=article, notes=notes,
+        ),
+        temperature=0.3,
+    )
+
+
 def _slug(title: str, max_len: int = 60) -> str:
     slug = re.sub(r"[^\w-]+", "-", title.lower(), flags=re.UNICODE).strip("-")
     return slug[:max_len].rstrip("-") or "no-title"
 
 
 def write_result(output_dir: Path, expert: Expert, item: NewsItem, article: str,
-                 review_result: dict, reviewer_model: str) -> Path:
+                 review_result: dict, reviewer_model: str,
+                 revisions: int = 0) -> Path:
     """Сохранить статью в Markdown; отклонённые — в подпапку rejected/."""
     today = datetime.date.today().isoformat()
     expert_dir = output_dir / today / expert.name
@@ -115,6 +143,7 @@ def write_result(output_dir: Path, expert: Expert, item: NewsItem, article: str,
             f"expert_model: {expert.model}\n"
             f"reviewer_model: {reviewer_model}\n"
             f"verdict: {review_result['verdict']}\n"
+            f"revisions: {revisions}\n"
             f"date: {today}\n"
             f"---\n\n"
             f"# {item.title}\n\n"
@@ -136,9 +165,17 @@ def process_item(llm: LLM, config: dict, item: NewsItem) -> list[Path]:
         logger.info("[%s] переработка: %s", expert.name, item.title)
         article = rewrite(llm, expert, item)
         review_result = review(llm, config["models"]["reviewer"], expert, item, article)
+        revisions = 0
+        while review_result["verdict"] != "ПРИНЯТО" and revisions < MAX_REVISIONS:
+            revisions += 1
+            logger.info("[%s] доработка %d по замечаниям рецензента",
+                        expert.name, revisions)
+            article = revise(llm, expert, item, article, review_result["notes"])
+            review_result = review(
+                llm, config["models"]["reviewer"], expert, item, article)
         path = write_result(
             Path(config["output_dir"]), expert, item, article, review_result,
-            config["models"]["reviewer"],
+            config["models"]["reviewer"], revisions,
         )
         if review_result["verdict"] == "ПРИНЯТО":
             logger.info("[%s] ПРИНЯТО -> %s", expert.name, path)
