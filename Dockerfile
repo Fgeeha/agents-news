@@ -10,5 +10,6 @@ FROM python:3.12-slim-bookworm
 WORKDIR /app
 COPY --from=build /app/.venv /app/.venv
 COPY config.yaml litellm.config.yaml ./
+COPY certs ./certs
 ENV PATH="/app/.venv/bin:$PATH"
 ENTRYPOINT ["agents-news"]

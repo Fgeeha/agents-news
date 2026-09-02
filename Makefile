@@ -47,19 +47,19 @@ image: ## Собрать Docker-образ agents-news
 	docker build -t $(IMAGE) .
 
 run-image: ## Запустить пайплайн в контейнере (шлюз и Ollama — на хосте)
-	docker run --rm --network host \
+	docker run --rm --network host --env-file .env \
 	  -v $(CURDIR)/config.yaml:/app/config.yaml:ro \
 	  -v $(CURDIR)/state:/app/state \
 	  -v $(CURDIR)/out:/app/out \
 	  $(IMAGE)
 
 run-image-web: ## Запустить web-интерфейс в контейнере на :8080
-	docker run --rm --network host \
+	docker run --rm --network host --env-file .env \
 	  -v $(CURDIR)/config.yaml:/app/config.yaml:ro \
 	  --entrypoint agents-news-web $(IMAGE)
 
 up-local: image ## Собрать и запустить web-интерфейс в фоне на :8080
-	docker run -d --name $(CONTAINER) --network host \
+	docker run -d --name $(CONTAINER) --network host --env-file .env \
 	  -v $(CURDIR)/config.yaml:/app/config.yaml:ro \
 	  --entrypoint agents-news-web $(IMAGE)
 
