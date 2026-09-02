@@ -1,18 +1,21 @@
-.DEFAULT_GOAL := help
-.PHONY: help install gateway run run-once web lint format test check image run-image run-image-web clean
+# Единая точка входа для всех операций проекта.
+# Зависимости ставятся только через uv — не pip и не poetry.
 
-# ---------- Справка ----------
+.DEFAULT_GOAL := help
+IMAGE ?= agents-news
+CONTAINER ?= agents-news-web
+
+.PHONY: help install gateway run run-once web lint format test check \
+        image run-image run-image-web up-local down-local clean
 
 help: ## Показать список целей
 	@grep -hE '^[a-zA-Z0-9_-]+:.*## ' $(MAKEFILE_LIST) \
 	  | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
-# ---------- Установка ----------
+# --- Разработка -------------------------------------------------------------
 
-install: ## Установить зависимости через uv
+install: ## Установить зависимости
 	uv sync
-
-# ---------- Запуск ----------
 
 gateway: ## Запустить шлюз LiteLLM (порт 4000, поверх Ollama)
 	uvx --from 'litellm[proxy]' --with 'fastapi==0.115.12' litellm --config litellm.config.yaml --port 4000
@@ -26,38 +29,46 @@ run-once: ## Пробный запуск: одна новость, без учё
 web: ## Web-интерфейс: новость с разных углов + рецензент (PORT, по умолчанию 8080)
 	uv run agents-news-web
 
-# ---------- Проверка ----------
-
-lint: ## Проверить код ruff
+lint: ## Проверить код (ruff check)
 	uvx ruff check src tests
 
-format: ## Отформатировать код ruff
+format: ## Отформатировать код и починить импорты
+	uvx ruff check --fix src tests
 	uvx ruff format src tests
 
-test: ## Запустить тесты
-	uv run pytest -q
+test: ## Прогнать тесты (офлайн, без сети и моделей)
+	uv run pytest
 
 check: lint test ## Линт и тесты разом
 
-# ---------- Docker ----------
+# --- Docker -----------------------------------------------------------------
 
 image: ## Собрать Docker-образ agents-news
-	docker build -t agents-news .
+	docker build -t $(IMAGE) .
 
 run-image: ## Запустить пайплайн в контейнере (шлюз и Ollama — на хосте)
 	docker run --rm --network host \
 	  -v $(CURDIR)/config.yaml:/app/config.yaml:ro \
 	  -v $(CURDIR)/state:/app/state \
 	  -v $(CURDIR)/out:/app/out \
-	  agents-news
+	  $(IMAGE)
 
 run-image-web: ## Запустить web-интерфейс в контейнере на :8080
 	docker run --rm --network host \
 	  -v $(CURDIR)/config.yaml:/app/config.yaml:ro \
-	  --entrypoint agents-news-web agents-news
+	  --entrypoint agents-news-web $(IMAGE)
 
-# ---------- Обслуживание ----------
+up-local: image ## Собрать и запустить web-интерфейс в фоне на :8080
+	docker run -d --name $(CONTAINER) --network host \
+	  -v $(CURDIR)/config.yaml:/app/config.yaml:ro \
+	  --entrypoint agents-news-web $(IMAGE)
 
-clean: ## Удалить результаты, состояние и кэши
-	rm -rf out state .pytest_cache .ruff_cache
-	find . -type d -name __pycache__ -exec rm -rf {} +
+down-local: ## Остановить и удалить локальный web-контейнер
+	-docker stop $(CONTAINER)
+	-docker rm $(CONTAINER)
+
+# --- Прочее -----------------------------------------------------------------
+
+clean: ## Удалить результаты, состояние, кэши и временные артефакты
+	find . -type d -name __pycache__ -prune -exec rm -rf {} +
+	rm -rf out state .pytest_cache .ruff_cache .coverage htmlcov
