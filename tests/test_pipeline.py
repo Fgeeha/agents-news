@@ -7,7 +7,7 @@ from agents_news.pipeline import Expert, process_item
 
 
 class FakeLLM:
-    """ask: гейт отвечает ДА только эксперту it; рецензии выдаются по очереди
+    """ask: гейт находит ракурс только эксперту it; рецензии выдаются по очереди
     из review_answers (последний ответ повторяется). embed: вектор задаётся
     словарём vectors, незнакомый текст роняет KeyError."""
 
@@ -20,8 +20,10 @@ class FakeLLM:
         self.revise_calls = 0
 
     def ask(self, model: str, system: str, user: str, temperature: float = 0.3) -> str:
-        if "фильтр тем" in system:
-            return "ДА" if "информационным технологиям" in user else "НЕТ."
+        if "можно ли переписать новость" in system:
+            if "информационным технологиям" in user:
+                return "ДА\nРелиз ядра затрагивает серверы читателей."
+            return "НЕТ\nНовость про ядро не влияет на сельское хозяйство."
         if "фильтр дублей" in system:
             return self.confirm_dup
         if "фактчекер" in system:
@@ -67,6 +69,7 @@ def test_only_relevant_expert_writes_article(tmp_path: Path) -> None:
     text = written[0].read_text(encoding="utf-8")
     assert "verdict: ПРИНЯТО" in text
     assert "Переработанный текст статьи." in text
+    assert "> Ракурс: Релиз ядра затрагивает серверы читателей." in text
     assert "source: https://example.com/1" in text
     assert not any(p.name == "agro" for p in tmp_path.rglob("*") if p.is_dir())
 

@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>agents-news — новость с разных углов</title>
 <style>
-  :root { color-scheme: light dark; font-family: system-ui, sans-serif; --line: #8884; --accent: #3b82f6; --ok: #16a34a; --bad: #dc2626; }
-  body { margin: 0; padding: 0 1rem 2rem; max-width: 80rem; margin-inline: auto; line-height: 1.45; }
+  :root { color-scheme: light dark; font-family: system-ui, sans-serif; --line: #8884; --accent: #3b82f6; --ok: #16a34a; --bad: #dc2626; --warn: #d97706; }
+  body { margin: 0; padding: 0 1rem 2rem; max-width: 96rem; margin-inline: auto; line-height: 1.45; }
   header { padding: 1rem 0 .6rem; border-bottom: 1px solid var(--line); }
   header h1 { font-size: 1.15rem; margin: 0; }
   header p { margin: .25rem 0 0; font-size: .85rem; opacity: .75; }
-  main { display: grid; grid-template-columns: 20rem 1fr; gap: 1.25rem; padding-top: 1rem; }
+  main { display: grid; grid-template-columns: 18rem 1fr; gap: 1.25rem; padding-top: 1rem; }
   @media (max-width: 56rem) { main { grid-template-columns: 1fr; } }
   aside form { display: flex; gap: .4rem; margin-bottom: .6rem; }
   input, textarea, button { font: inherit; }
@@ -28,24 +28,38 @@
   .muted { font-size: .8rem; opacity: .7; }
   .text { white-space: pre-wrap; font-size: .92rem; max-height: 14rem; overflow-y: auto; margin: .5rem 0; padding: .5rem .7rem; background: #8881; border-radius: .5rem; }
   .actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; }
-  #experts { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1rem; }
-  .steps { display: flex; gap: .35rem; flex-wrap: wrap; margin: .5rem 0; }
-  .step { font-size: .75rem; padding: .15rem .55rem; border-radius: 1rem; border: 1px solid var(--line); opacity: .6; }
-  .step.run { opacity: 1; border-color: var(--accent); color: var(--accent); }
-  .step.ok { opacity: 1; border-color: var(--ok); color: var(--ok); }
-  .step.bad { opacity: 1; border-color: var(--bad); color: var(--bad); }
-  textarea { width: 100%; box-sizing: border-box; min-height: 12rem; padding: .5rem .7rem; border: 1px solid var(--line); border-radius: .5rem; resize: vertical; }
-  .verdict { font-weight: 600; margin-top: .6rem; }
+  #experts { display: grid; grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); gap: 1rem; align-items: start; }
+  /* Лента этапов: вертикальная линия слева, каждый этап — узел с текстом */
+  .flow { position: relative; margin: .8rem 0 0; padding-left: 1.4rem; }
+  .flow::before { content: ""; position: absolute; left: .45rem; top: .4rem; bottom: .4rem; width: 2px; background: var(--line); }
+  .stage { position: relative; margin-bottom: 1rem; }
+  .stage::before { content: ""; position: absolute; left: -1.4rem; top: .35rem; width: .8rem; height: .8rem; border-radius: 50%; background: canvas; border: 2px solid var(--line); box-sizing: border-box; }
+  .stage.run::before { border-color: var(--accent); background: var(--accent); animation: pulse 1s infinite alternate; }
+  .stage.ok::before { border-color: var(--ok); background: var(--ok); }
+  .stage.bad::before { border-color: var(--bad); background: var(--bad); }
+  .stage.warn::before { border-color: var(--warn); background: var(--warn); }
+  @keyframes pulse { from { opacity: 1; } to { opacity: .35; } }
+  .stage h4 { margin: 0; font-size: .85rem; display: flex; justify-content: space-between; gap: .5rem; }
+  .stage h4 small { font-weight: 400; opacity: .65; }
+  .stage .body { white-space: pre-wrap; font-size: .9rem; margin: .3rem 0 0; padding: .5rem .7rem; background: #8881; border-radius: .5rem; }
+  .stage.bad .body, .stage.warn .body { border-left: 3px solid var(--bad); }
+  .stage.warn .body { border-color: var(--warn); }
+  .stage .diff { max-height: 22rem; overflow-y: auto; }
+  ins { background: #16a34a33; text-decoration: none; }
+  del { background: #dc262633; }
+  .diff-legend { font-size: .72rem; opacity: .7; margin-top: .2rem; }
+  .stage .stats { font-size: .75rem; opacity: .7; margin-top: .25rem; }
+  textarea { width: 100%; box-sizing: border-box; min-height: 12rem; padding: .5rem .7rem; border: 1px solid var(--line); border-radius: .5rem; resize: vertical; margin-top: .3rem; }
+  .verdict { font-weight: 600; }
   .verdict.ok { color: var(--ok); } .verdict.bad { color: var(--bad); }
-  .notes { white-space: pre-wrap; font-size: .9rem; margin: .3rem 0 0; }
   .err { color: var(--bad); font-size: .9rem; }
   [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 <header>
-  <h1>agents-news: одна новость, три угла зрения и независимый рецензент</h1>
-  <p>Выберите новость из волгоградских лент или вставьте ссылку. Каждый эксперт сначала решает, его ли это тема, затем переписывает новость для своей аудитории, а рецензент на модели другого семейства сверяет статью с исходником. Текст статьи можно править перед проверкой — так видно, как рецензент ловит выдуманные факты.</p>
+  <h1>agents-news: одна новость, три аудитории и независимый редактор</h1>
+  <p>Выберите новость из лент или вставьте ссылку. Для каждой аудитории конвейер сначала ищет ракурс: можно ли переписать эту новость так, чтобы она была полезна именно этим читателям, и почему. Если ракурс есть, эксперт пишет статью вокруг него, независимый редактор на модели другого семейства сверяет её с исходником, а при отклонении эксперт дорабатывает текст. Ниже видна вся работа с текстом: ракурс, каждая версия статьи, замечания редактора и что именно изменилось между версиями.</p>
 </header>
 <main>
   <aside>
@@ -61,7 +75,7 @@
       <a id="link" class="muted" target="_blank" rel="noopener"></a>
       <div id="summary" class="text"></div>
       <div class="actions">
-        <button id="runall">Прогнать через всех экспертов</button>
+        <button id="runall">Прогнать через все аудитории</button>
         <span id="srcnote" class="muted"></span>
       </div>
     </div>
@@ -78,6 +92,33 @@
   };
   const host = u => { try { return new URL(u).host.replace(/^www\./, ''); } catch { return u; } };
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+
+  // Пословный diff через LCS. ponytail: O(n·m) по словам; статьи 3–5 абзацев, хватает.
+  const diff = (a, b) => {
+    const A = a.split(/(\s+)/).filter(Boolean), B = b.split(/(\s+)/).filter(Boolean);
+    const n = A.length, m = B.length;
+    const dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+      dp[i][j] = A[i] === B[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    const out = []; let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (A[i] === B[j]) out.push(['=', A[i++]]), j++;
+      else if (dp[i + 1][j] >= dp[i][j + 1]) out.push(['-', A[i++]]);
+      else out.push(['+', B[j++]]);
+    }
+    while (i < n) out.push(['-', A[i++]]);
+    while (j < m) out.push(['+', B[j++]]);
+    return out;
+  };
+  const renderDiff = (a, b) => {
+    const box = el('div', 'body diff'); let del = 0, ins = 0;
+    for (const [op, w] of diff(a, b)) {
+      if (op === '=') box.append(w);
+      else if (op === '-') { if (w.trim()) del++; box.append(el('del', null, w)); }
+      else { if (w.trim()) ins++; box.append(el('ins', null, w)); }
+    }
+    return { box, del, ins };
+  };
 
   let cfg = { experts: [], models: {} }, item = null, cards = {};
 
@@ -104,74 +145,90 @@
     cards = {};
     for (const ex of cfg.experts) {
       const c = el('div', 'card');
-      c.append(el('h3', null, ex.title), el('div', 'muted', `${ex.domain} · модель ${ex.model}, фильтр ${cfg.models.gate}, рецензент ${cfg.models.reviewer}`));
-      const steps = el('div', 'steps');
-      const step = {};
-      for (const [k, label] of [['gate', 'фильтр темы'], ['rewrite', 'эксперт пишет'], ['review', 'рецензент проверяет'], ['revise', 'доработка']]) steps.append(step[k] = el('span', 'step', label));
-      const status = el('div', 'muted'), err = el('div', 'err');
-      const article = el('textarea'); article.hidden = true; article.placeholder = 'Статья эксперта';
-      const verdict = el('div', 'verdict'), notes = el('div', 'notes');
-      const actions = el('div', 'actions');
+      c.append(el('h3', null, ex.title), el('div', 'muted', `${ex.domain} · эксперт ${ex.model}, ракурс ${cfg.models.gate}, редактор ${cfg.models.reviewer}`));
+      const flow = el('div', 'flow'), actions = el('div', 'actions');
       const btn = (label, cls, fn) => { const b = el('button', cls, label); b.onclick = fn; actions.append(b); return b; };
-      const bRun = btn('Прогнать', null, () => run(ex.name));
-      const bForce = btn('Переписать всё равно', 'ghost', () => run(ex.name, true)); bForce.hidden = true;
-      const bReview = btn('Проверить рецензентом', 'ghost', () => doReview(ex.name)); bReview.hidden = true;
-      const bRevise = btn('Доработать по замечаниям', 'ghost', () => doRevise(ex.name)); bRevise.hidden = true;
-      c.append(steps, status, err, article, verdict, notes, actions);
+      const card = { ex, flow, actions, angle: '', versions: [], notes: '', editor: null, busy: false };
+      card.bRun = btn('Прогнать', null, () => run(ex.name));
+      card.bForce = btn('Переписать всё равно', 'ghost', () => run(ex.name, true)); card.bForce.hidden = true;
+      card.bReview = btn('Проверить редактором', 'ghost', () => doReview(ex.name)); card.bReview.hidden = true;
+      card.bRevise = btn('Доработать по замечаниям', 'ghost', () => doRevise(ex.name)); card.bRevise.hidden = true;
+      c.append(flow, actions);
       $('experts').append(c);
-      cards[ex.name] = { ex, step, status, err, article, verdict, notes, bRun, bForce, bReview, bRevise, notesText: '' };
+      cards[ex.name] = card;
     }
   };
 
-  const busy = (card, on) => { for (const b of [card.bRun, card.bForce, card.bReview, card.bRevise]) b.disabled = on; $('runall').disabled = on; };
-  const mark = (card, k, state) => { card.step[k].className = 'step' + (state ? ' ' + state : ''); };
-  const timed = async (card, k, text, fn) => {
-    mark(card, k, 'run'); card.status.textContent = text; card.err.textContent = '';
-    const t0 = performance.now();
-    try { const r = await fn(); mark(card, k, 'ok'); card.status.textContent = `${text} готово за ${((performance.now() - t0) / 1000).toFixed(0)} с`; return r; }
-    catch (e) { mark(card, k, 'bad'); card.err.textContent = e.message; throw e; }
+  const busy = (card, on) => { card.busy = on; for (const b of [card.bRun, card.bForce, card.bReview, card.bRevise]) b.disabled = on; $('runall').disabled = Object.values(cards).some(c => c.busy); };
+  const stage = (card, title) => {
+    const s = el('div', 'stage run'); const h = el('h4'); h.append(el('span', null, title), el('small', null, 'в работе…'));
+    s.append(h); card.flow.append(s); s.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    return s;
   };
-  const setVerdict = (card, r) => {
+  const finish = (s, state, note) => { s.className = 'stage ' + state; s.querySelector('small').textContent = note; };
+  const timed = async (card, title, fn) => {
+    const s = stage(card, title); const t0 = performance.now();
+    try { const r = await fn(); finish(s, 'ok', `${((performance.now() - t0) / 1000).toFixed(0)} с`); return [s, r]; }
+    catch (e) { finish(s, 'bad', 'ошибка'); s.append(el('div', 'err', e.message)); throw e; }
+  };
+  const current = card => card.editor ? card.editor.value : '';
+  const addVersion = (card, text, label) => {
+    // Предыдущая версия становится read-only, последняя — редактируемая
+    if (card.editor) { const ro = el('div', 'body', card.editor.value); card.editor.replaceWith(ro); }
+    card.versions.push(text);
+    card.editor = el('textarea'); card.editor.value = text;
+    const s = card.flow.lastElementChild;
+    if (card.versions.length > 1) {
+      const prev = card.versions[card.versions.length - 2];
+      const { box, del, ins } = renderDiff(prev, text);
+      s.append(box, el('div', 'stats', `Изменения относительно предыдущей версии: −${del} / +${ins} слов. Ниже — текст версии, его можно править перед проверкой.`));
+    } else {
+      s.append(el('div', 'stats', 'Текст можно править перед проверкой — так видно, как редактор ловит выдуманные факты.'));
+    }
+    s.append(card.editor);
+    card.bReview.hidden = false; card.bRevise.hidden = true;
+  };
+  const setVerdict = (card, s, r) => {
     const ok = r.verdict === 'ПРИНЯТО';
-    card.verdict.textContent = 'Вердикт рецензента: ' + r.verdict; card.verdict.className = 'verdict ' + (ok ? 'ok' : 'bad');
-    card.notes.textContent = r.notes; card.notesText = r.notes;
-    card.bRevise.hidden = ok; card.bReview.hidden = false;
+    finish(s, ok ? 'ok' : 'warn', s.querySelector('small').textContent);
+    s.append(el('div', 'verdict ' + (ok ? 'ok' : 'bad'), 'Вердикт: ' + r.verdict), el('div', 'body', r.notes));
+    card.notes = r.notes; card.bRevise.hidden = ok;
   };
-  const reset = card => {
-    for (const k in card.step) mark(card, k, '');
-    card.article.hidden = true; card.article.value = ''; card.verdict.textContent = ''; card.notes.textContent = ''; card.err.textContent = '';
-    card.bForce.hidden = card.bReview.hidden = card.bRevise.hidden = true;
-  };
+  const reset = card => { card.flow.replaceChildren(); card.versions = []; card.editor = null; card.angle = ''; card.notes = ''; card.bForce.hidden = card.bReview.hidden = card.bRevise.hidden = true; };
 
   const run = async (name, force = false) => {
     const card = cards[name]; reset(card); busy(card, true);
     try {
       if (!force) {
-        const { relevant } = await timed(card, 'gate', 'Фильтр решает, по теме ли новость…', () => post('/step', { step: 'gate', expert: name, item }));
-        if (!relevant) { card.status.textContent = 'Фильтр: новость не по теме эксперта — в конвейере он бы её пропустил.'; card.bForce.hidden = false; return; }
-      } else { mark(card, 'gate', 'bad'); }
-      const { article } = await timed(card, 'rewrite', 'Эксперт переписывает новость (1–3 мин)…', () => post('/step', { step: 'rewrite', expert: name, item }));
-      card.article.value = article; card.article.hidden = false;
+        const [s, g] = await timed(card, 'Ракурс: можно ли переписать для этой аудитории?', () => post('/step', { step: 'gate', expert: name, item }));
+        s.append(el('div', 'body', (g.possible ? 'ДА. ' : 'НЕТ. ') + g.angle));
+        if (!g.possible) { finish(s, 'bad', 'ракурса нет'); s.append(el('div', 'muted', 'В конвейере эта аудитория новость не получит.')); card.bForce.hidden = false; return; }
+        card.angle = g.angle;
+      } else {
+        const s = stage(card, 'Ракурс'); finish(s, 'warn', 'пропущен'); s.append(el('div', 'body', 'Ракурс не задан — эксперт пишет на своё усмотрение.'));
+      }
+      const [, { article }] = await timed(card, 'Версия 1: эксперт пишет статью (1–3 мин)', () => post('/step', { step: 'rewrite', expert: name, item, angle: card.angle }));
+      addVersion(card, article);
       await doReview(name, true);
     } catch {} finally { busy(card, false); }
   };
   const doReview = async (name, nested = false) => {
     const card = cards[name]; if (!nested) busy(card, true);
     try {
-      const r = await timed(card, 'review', 'Рецензент сверяет статью с исходником…', () => post('/step', { step: 'review', expert: name, item, article: card.article.value }));
-      setVerdict(card, r);
+      const [s, r] = await timed(card, 'Редактор сверяет с исходником', () => post('/step', { step: 'review', expert: name, item, article: current(card), angle: card.angle }));
+      setVerdict(card, s, r);
     } catch {} finally { if (!nested) busy(card, false); }
   };
   const doRevise = async name => {
     const card = cards[name]; busy(card, true);
     try {
-      const { article } = await timed(card, 'revise', 'Эксперт дорабатывает статью по замечаниям…', () => post('/step', { step: 'revise', expert: name, item, article: card.article.value, notes: card.notesText }));
-      card.article.value = article;
+      const [, { article }] = await timed(card, `Версия ${card.versions.length + 1}: эксперт дорабатывает по замечаниям`, () => post('/step', { step: 'revise', expert: name, item, article: current(card), notes: card.notes }));
+      addVersion(card, article);
       await doReview(name, true);
     } catch {} finally { busy(card, false); }
   };
 
-  $('runall').onclick = async () => { for (const name of Object.keys(cards)) await run(name); };
+  $('runall').onclick = async () => { for (const name of Object.keys(cards)) await run(name); };  // последовательно: параллельные запросы на CPU-инференсе упираются в таймаут
   $('urlform').onsubmit = async e => {
     e.preventDefault();
     const b = e.target.querySelector('button'); b.disabled = true;

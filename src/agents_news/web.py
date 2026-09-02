@@ -22,7 +22,7 @@ import yaml
 
 from agents_news.feeds import FULLTEXT_LIMIT, NewsItem, fetch_fulltext, fetch_items
 from agents_news.llm import Gateway
-from agents_news.pipeline import Expert, is_relevant, review, revise, rewrite
+from agents_news.pipeline import Expert, find_angle, review, revise, rewrite
 
 logger = logging.getLogger(__name__)
 
@@ -75,12 +75,14 @@ def run_step(data: dict) -> dict:
     if step == "fulltext":
         return {"summary": fetch_fulltext(item.link)}
     expert = next(e for e in config["experts"] if e.name == data["expert"])
+    angle = str(data.get("angle", ""))
     if step == "gate":
-        return {"relevant": is_relevant(llm, config["models"]["gate"], expert, item)}
+        return find_angle(llm, config["models"]["gate"], expert, item)
     if step == "rewrite":
-        return {"article": rewrite(llm, expert, item)}
+        return {"article": rewrite(llm, expert, item, angle)}
     if step == "review":
-        return review(llm, config["models"]["reviewer"], expert, item, str(data["article"]))
+        return review(llm, config["models"]["reviewer"], expert, item,
+                      str(data["article"]), angle)
     if step == "revise":
         return {"article": revise(llm, expert, item, str(data["article"]), str(data["notes"]))}
     raise KeyError(step)

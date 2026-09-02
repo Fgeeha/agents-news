@@ -41,7 +41,10 @@ def post(url, payload):
 
 def test_index_config_news(base_url):
     with urllib.request.urlopen(base_url + "/") as r:
-        assert r.status == 200 and "agents-news" in r.read().decode()
+        page = r.read().decode()
+    assert r.status == 200 and "agents-news" in page
+    # только secure context (https/localhost): по http://<ip> скрипт упал бы на первой строке
+    assert "randomUUID(" not in page and "navigator.clipboard" not in page
     assert get(base_url + "/health") == {"status": "ok"}
     assert [e["name"] for e in get(base_url + "/config")["experts"]] == ["agro", "it"]
     assert get(base_url + "/news")[0]["title"] == ITEM.title
@@ -51,9 +54,11 @@ def test_steps_follow_pipeline(base_url):
     item = {"title": ITEM.title, "summary": ITEM.summary, "link": ITEM.link}
     step = lambda **kw: post(base_url + "/step", {"item": item, **kw})  # noqa: E731
 
-    assert step(step="gate", expert="agro") == {"relevant": False}
-    assert step(step="gate", expert="it") == {"relevant": True}
-    article = step(step="rewrite", expert="it")["article"]
+    assert step(step="gate", expert="agro") == {
+        "possible": False, "angle": "Новость про ядро не влияет на сельское хозяйство."}
+    gate = step(step="gate", expert="it")
+    assert gate["possible"] and "серверы" in gate["angle"]
+    article = step(step="rewrite", expert="it", angle=gate["angle"])["article"]
     assert article == "Переработанный текст статьи."
     first = step(step="review", expert="it", article=article)
     assert first["verdict"] == "ОТКЛОНЕНО"

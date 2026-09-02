@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430" role="img" aria-labelledby="title desc">
   <title id="title">Конвейер agents-news</title>
-  <desc id="desc">RSS-ленты проходят дедупликацию, фильтр темы, переработку экспертом и проверку рецензентом; принятые статьи попадают в out, отклонённые — в rejected.</desc>
+  <desc id="desc">RSS-ленты проходят дедупликацию, поиск ракурса для каждой аудитории, переработку экспертом и проверку редактором; принятые статьи попадают в out, отклонённые — в rejected.</desc>
 
   <rect width="1200" height="430" rx="24" fill="#0b0e14"/>
   <rect x="0.75" y="0.75" width="1198.5" height="428.5" rx="23.5" fill="none" stroke="#1c2230" stroke-width="1.5"/>
@@ -22,12 +22,12 @@
       <text x="20" y="72" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18" fill="#8b949e">id → Жаккар →</text>
       <text x="20" y="98" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18" fill="#8b949e">bge-m3 → gate</text>
     </g>
-    <!-- этап 3: фильтр темы -->
+    <!-- этап 3: поиск ракурса -->
     <g transform="translate(504,80)">
       <rect width="192" height="120" rx="12" fill="#11161f" stroke="#2a3140" stroke-width="1.5"/>
-      <text x="20" y="38" font-size="22" font-weight="600" fill="#e8e6e0">Фильтр темы</text>
+      <text x="20" y="38" font-size="22" font-weight="600" fill="#e8e6e0">Ракурс</text>
       <text x="20" y="72" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18" fill="#8b949e">qwen2.5:7b</text>
-      <text x="20" y="98" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18" fill="#d29922">ДА / НЕТ</text>
+      <text x="20" y="98" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18" fill="#d29922">ДА + ракурс</text>
     </g>
     <!-- этап 4: эксперт -->
     <g transform="translate(732,80)">
