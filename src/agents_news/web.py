@@ -32,7 +32,7 @@ FEED_TTL = 600  # ponytail: один общий кэш лент на проце�
 
 config: dict = {}
 llm: Gateway | None = None
-_feed_cache: tuple[float, list[NewsItem]] = (0.0, [])
+_feed_cache: tuple[float, list[NewsItem]] = (float("-inf"), [])  # -inf: monotonic() на свежем хосте < FEED_TTL
 _feed_lock = threading.Lock()
 
 

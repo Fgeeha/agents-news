@@ -19,7 +19,7 @@ def base_url(monkeypatch):
         "ВЕРДИКТ: ПРИНЯТО\n- замечания устранены",
     ]))
     monkeypatch.setattr(web, "fetch_items", lambda urls, limit: [ITEM])
-    monkeypatch.setattr(web, "_feed_cache", (0.0, []))
+    monkeypatch.setattr(web, "_feed_cache", (float("-inf"), []))
     server = web.serve(host="127.0.0.1", port=0)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     yield f"http://127.0.0.1:{server.server_address[1]}"
