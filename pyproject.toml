@@ -17,6 +17,7 @@ dev = [
 
 [project.scripts]
 agents-news = "agents_news.main:main"
+agents-news-web = "agents_news.web:main"
 
 [build-system]
 requires = ["hatchling"]

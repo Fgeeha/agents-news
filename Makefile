@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install gateway run run-once lint format test check image run-image clean
+.PHONY: help install gateway run run-once web lint format test check image run-image run-image-web clean
 
 # ---------- Справка ----------
 
@@ -22,6 +22,9 @@ run: ## Обработать новые новости из RSS-лент
 
 run-once: ## Пробный запуск: одна новость, без учёта состояния
 	uv run agents-news --limit 1 --no-state
+
+web: ## Web-интерфейс: новость с разных углов + рецензент (PORT, по умолчанию 8080)
+	uv run agents-news-web
 
 # ---------- Проверка ----------
 
@@ -47,6 +50,11 @@ run-image: ## Запустить пайплайн в контейнере (шл�
 	  -v $(CURDIR)/state:/app/state \
 	  -v $(CURDIR)/out:/app/out \
 	  agents-news
+
+run-image-web: ## Запустить web-интерфейс в контейнере на :8080
+	docker run --rm --network host \
+	  -v $(CURDIR)/config.yaml:/app/config.yaml:ro \
+	  --entrypoint agents-news-web agents-news
 
 # ---------- Обслуживание ----------
 
