@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340" viewBox="0 0 1200 340" role="img" aria-labelledby="title desc">
   <title id="title">agents-news</title>
-  <desc id="desc">Новостной конвейер на локальных моделях: три эксперта переписывают новости, независимый рецензент ставит вердикт ПРИНЯТО.</desc>
+  <desc id="desc">Новостной конвейер на локальных моделях: эксперты разных сфер переписывают новости, независимый рецензент ставит вердикт ПРИНЯТО.</desc>
 
   <rect width="1200" height="340" rx="24" fill="#0b0e14"/>
   <rect x="0.75" y="0.75" width="1198.5" height="338.5" rx="23.5" fill="none" stroke="#1c2230" stroke-width="1.5"/>
@@ -8,7 +8,7 @@
   <g id="title-block" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
     <text x="64" y="84" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="19" letter-spacing="2" fill="#d29922">НОВОСТНОЙ КОНВЕЙЕР НА ЛОКАЛЬНЫХ МОДЕЛЯХ</text>
     <text x="60" y="156" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="62" font-weight="700" fill="#e8e6e0">agents-news</text>
-    <text x="64" y="205" font-size="23" fill="#b8b4ab">Три эксперта переписывают новости из RSS —</text>
+    <text x="64" y="205" font-size="23" fill="#b8b4ab">Эксперты разных сфер переписывают новости —</text>
     <text x="64" y="237" font-size="23" fill="#b8b4ab">каждый для своей аудитории. Независимый</text>
     <text x="64" y="269" font-size="23" fill="#b8b4ab">рецензент на другой модели ставит вердикт.</text>
     <text x="64" y="308" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="17" fill="#8b949e">python 3.11+ · uv · ollama · litellm · rss</text>
