@@ -45,6 +45,7 @@ def test_index_config_news(base_url):
     assert r.status == 200 and "agents-news" in page
     # только secure context (https/localhost): по http://<ip> скрипт упал бы на первой строке
     assert "randomUUID(" not in page and "navigator.clipboard" not in page
+    assert "localStorage" in page  # история прогонов живёт в браузере, сервер без состояния
     assert get(base_url + "/health") == {"status": "ok"}
     assert [e["name"] for e in get(base_url + "/config")["experts"]] == ["agro", "it"]
     assert get(base_url + "/news")[0]["title"] == ITEM.title

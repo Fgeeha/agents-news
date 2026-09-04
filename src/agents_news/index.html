@@ -18,10 +18,13 @@
   button { padding: .4rem .9rem; border: 0; border-radius: .5rem; background: var(--accent); color: #fff; cursor: pointer; }
   button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
   button:disabled { opacity: .5; cursor: wait; }
-  #news { list-style: none; margin: 0; padding: 0; max-height: 70dvh; overflow-y: auto; }
-  #news li { padding: .5rem .6rem; border: 1px solid var(--line); border-radius: .5rem; margin-bottom: .35rem; cursor: pointer; font-size: .9rem; }
-  #news li:hover { border-color: var(--accent); }
-  #news li.active { background: #3b82f622; border-color: var(--accent); }
+  aside h3 { font-size: .85rem; margin: 1rem 0 .4rem; opacity: .75; }
+  aside ul { list-style: none; margin: 0; padding: 0; max-height: 38dvh; overflow-y: auto; }
+  aside li { position: relative; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: .5rem; margin-bottom: .35rem; cursor: pointer; font-size: .9rem; }
+  aside li:hover { border-color: var(--accent); }
+  aside li.active { background: #3b82f622; border-color: var(--accent); }
+  aside li .x { position: absolute; top: .2rem; right: .2rem; padding: 0 .4rem; background: transparent; color: inherit; opacity: .5; }
+  aside li .x:hover { opacity: 1; color: var(--bad); }
   .src { font-size: .72rem; opacity: .65; display: block; }
   .card { border: 1px solid var(--line); border-radius: .75rem; padding: .9rem 1rem; margin-bottom: 1rem; }
   .card h2, .card h3 { margin: 0 0 .3rem; font-size: 1rem; }
@@ -68,6 +71,10 @@
       <button type="submit">Загрузить</button>
     </form>
     <ul id="news"><li class="muted">Загружаю ленты…</li></ul>
+    <div id="histbox" hidden>
+      <h3>История прогонов <small class="muted">(хранится в этом браузере)</small></h3>
+      <ul id="history"></ul>
+    </div>
   </aside>
   <section>
     <div id="source" class="card" hidden>
@@ -120,21 +127,53 @@
     return { box, del, ins };
   };
 
-  let cfg = { experts: [], models: {} }, item = null, cards = {};
+  let cfg = { experts: [], models: {} }, item = null, cards = {}, session = null, history = [];
 
-  const showItem = async it => {
-    item = it;
+  // Хранилище: история прогонов в localStorage этого браузера. Сервер состояния не держит.
+  const KEY = 'agents-news.history', MAX_HISTORY = 20;
+  const load = () => { try { const d = JSON.parse(localStorage.getItem(KEY)); if (Array.isArray(d.history)) { history = d.history; return d.current; } } catch {} return null; };
+  const save = () => {
+    history = history.slice(0, MAX_HISTORY);
+    try { localStorage.setItem(KEY, JSON.stringify({ history, current: session && session.id })); }
+    catch { if (history.length > 1) { history.pop(); save(); } }  // квота: выбрасываем самый старый прогон
+  };
+  const newState = () => ({ angle: '', notes: '', log: [] });
+  const versionsOf = st => st.log.filter(e => e.kind === 'version');
+
+  const renderHistory = () => {
+    const ul = $('history'); ul.replaceChildren(); $('histbox').hidden = !history.length;
+    for (const h of history) {
+      const li = el('li'); if (session && h.id === session.id) li.classList.add('active');
+      const done = Object.values(h.cards).filter(c => versionsOf(c).length).length;
+      li.append(el('span', 'src', `${new Date(h.at).toLocaleString('ru')} · ${host(h.item.link)} · статей: ${done}`), document.createTextNode(h.item.title));
+      const x = el('button', 'x', '×'); x.title = 'Удалить из истории';
+      x.onclick = ev => {
+        ev.stopPropagation(); history = history.filter(o => o !== h);
+        if (session === h) { session = null; item = null; $('source').hidden = true; $('experts').replaceChildren(); }
+        save(); renderHistory();
+      };
+      li.onclick = () => showItem(h.item, h);
+      li.append(x); ul.append(li);
+    }
+  };
+  const markNews = link => document.querySelectorAll('#news li').forEach(x => x.classList.toggle('active', x.dataset.link === link));
+
+  const showItem = async (it, sess = null) => {
+    session = sess || history.find(h => h.item.link === it.link) || { id: Date.now(), at: Date.now(), item: it, cards: {} };
+    history = [session, ...history.filter(h => h !== session)];
+    item = session.item;
+    markNews(item.link);
     $('source').hidden = false;
-    $('title').textContent = it.title;
-    $('link').textContent = it.link; $('link').href = it.link;
-    $('summary').textContent = it.summary;
+    $('title').textContent = item.title;
+    $('link').textContent = item.link; $('link').href = item.link;
+    $('summary').textContent = item.summary;
     $('srcnote').textContent = '';
-    buildCards();
-    if (it.summary.length < 200) {
+    buildCards(); renderHistory(); save();
+    if (item.summary.length < 200) {
       $('srcnote').textContent = 'RSS-описание короткое, догружаю полный текст…';
       try {
-        const { summary } = await post('/step', { step: 'fulltext', item: it });
-        if (summary) { item = { ...it, summary }; $('summary').textContent = summary; $('srcnote').textContent = `Полный текст догружен: ${summary.length} символов.`; }
+        const { summary } = await post('/step', { step: 'fulltext', item });
+        if (summary) { session.item = item = { ...item, summary }; $('summary').textContent = summary; $('srcnote').textContent = `Полный текст догружен: ${summary.length} символов.`; save(); }
         else $('srcnote').textContent = 'Полный текст не догрузился — работаем по описанию из ленты.';
       } catch (e) { $('srcnote').textContent = 'Полный текст не догрузился: ' + e.message; }
     }
@@ -148,82 +187,97 @@
       c.append(el('h3', null, ex.title), el('div', 'muted', `${ex.domain} · эксперт ${ex.model}, ракурс ${cfg.models.gate}, редактор ${cfg.models.reviewer}`));
       const flow = el('div', 'flow'), actions = el('div', 'actions');
       const btn = (label, cls, fn) => { const b = el('button', cls, label); b.onclick = fn; actions.append(b); return b; };
-      const card = { ex, flow, actions, angle: '', versions: [], notes: '', editor: null, busy: false };
+      const card = { ex, flow, actions, state: session.cards[ex.name] ||= newState(), editor: null, busy: false };
       card.bRun = btn('Прогнать', null, () => run(ex.name));
-      card.bForce = btn('Переписать всё равно', 'ghost', () => run(ex.name, true)); card.bForce.hidden = true;
-      card.bReview = btn('Проверить редактором', 'ghost', () => doReview(ex.name)); card.bReview.hidden = true;
-      card.bRevise = btn('Доработать по замечаниям', 'ghost', () => doRevise(ex.name)); card.bRevise.hidden = true;
+      card.bForce = btn('Переписать всё равно', 'ghost', () => run(ex.name, true));
+      card.bReview = btn('Проверить редактором', 'ghost', () => doReview(ex.name));
+      card.bRevise = btn('Доработать по замечаниям', 'ghost', () => doRevise(ex.name));
       c.append(flow, actions);
       $('experts').append(c);
       cards[ex.name] = card;
+      render(card);
     }
   };
+
+  // Лента этапов строится из card.state.log — то же, что лежит в localStorage
+  const render = card => {
+    card.flow.replaceChildren(); card.editor = null;
+    const st = card.state, versions = versionsOf(st); let seen = 0;
+    for (const e of st.log) {
+      const s = el('div', 'stage'), h = el('h4'), small = el('small', null, e.secs != null ? `${e.secs} с` : '');
+      h.append(el('span', null, e.title), small); s.append(h); card.flow.append(s);
+      const done = (state, note) => { s.classList.add(state); if (note) small.textContent = note; };
+      if (e.kind === 'gate') {
+        s.append(el('div', 'body', (e.possible ? 'ДА. ' : 'НЕТ. ') + e.angle));
+        if (e.possible) done('ok'); else { done('bad', 'ракурса нет'); s.append(el('div', 'muted', 'В конвейере эта аудитория новость не получит.')); }
+      } else if (e.kind === 'gate-skip') {
+        done('warn', 'пропущен'); s.append(el('div', 'body', 'Ракурс не задан — эксперт пишет на своё усмотрение.'));
+      } else if (e.kind === 'version') {
+        done('ok'); seen++;
+        if (seen > 1) {
+          const { box, del, ins } = renderDiff(versions[seen - 2].text, e.text);
+          s.append(box, el('div', 'stats', `Изменения относительно предыдущей версии: −${del} / +${ins} слов.`));
+        }
+        if (seen < versions.length) s.append(el('div', 'body', e.text));
+        else {
+          s.append(el('div', 'stats', 'Текст можно править перед проверкой — так видно, как редактор ловит выдуманные факты.'));
+          card.editor = el('textarea'); card.editor.value = e.text;
+          card.editor.oninput = () => { e.text = card.editor.value; save(); };
+          s.append(card.editor);
+        }
+      } else if (e.kind === 'review') {
+        const ok = e.verdict === 'ПРИНЯТО'; done(ok ? 'ok' : 'warn');
+        s.append(el('div', 'verdict ' + (ok ? 'ok' : 'bad'), 'Вердикт: ' + e.verdict), el('div', 'body', e.notes));
+      } else if (e.kind === 'error') {
+        done('bad', 'ошибка'); s.append(el('div', 'err', e.message));
+      }
+    }
+    const last = st.log[st.log.length - 1];
+    card.bForce.hidden = !(last && last.kind === 'gate' && !last.possible);
+    card.bReview.hidden = !versions.length;
+    card.bRevise.hidden = !(last && last.kind === 'review' && last.verdict !== 'ПРИНЯТО');
+  };
+  const push = (card, entry) => { card.state.log.push(entry); render(card); save(); };
+  const current = card => { const v = versionsOf(card.state); return v.length ? v[v.length - 1].text : ''; };
 
   const busy = (card, on) => { card.busy = on; for (const b of [card.bRun, card.bForce, card.bReview, card.bRevise]) b.disabled = on; $('runall').disabled = Object.values(cards).some(c => c.busy); };
-  const stage = (card, title) => {
-    const s = el('div', 'stage run'); const h = el('h4'); h.append(el('span', null, title), el('small', null, 'в работе…'));
-    s.append(h); card.flow.append(s); s.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    return s;
-  };
-  const finish = (s, state, note) => { s.className = 'stage ' + state; s.querySelector('small').textContent = note; };
+  // Временный этап «в работе» живёт только в DOM; в лог попадает готовый результат (или ошибка)
   const timed = async (card, title, fn) => {
-    const s = stage(card, title); const t0 = performance.now();
-    try { const r = await fn(); finish(s, 'ok', `${((performance.now() - t0) / 1000).toFixed(0)} с`); return [s, r]; }
-    catch (e) { finish(s, 'bad', 'ошибка'); s.append(el('div', 'err', e.message)); throw e; }
+    const s = el('div', 'stage run'), h = el('h4'); h.append(el('span', null, title), el('small', null, 'в работе…'));
+    s.append(h); card.flow.append(s); s.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    const t0 = performance.now();
+    try { const r = await fn(); return [r, { title, secs: Math.round((performance.now() - t0) / 1000) }]; }
+    catch (e) { push(card, { kind: 'error', title, message: e.message }); throw e; }
   };
-  const current = card => card.editor ? card.editor.value : '';
-  const addVersion = (card, text, label) => {
-    // Предыдущая версия становится read-only, последняя — редактируемая
-    if (card.editor) { const ro = el('div', 'body', card.editor.value); card.editor.replaceWith(ro); }
-    card.versions.push(text);
-    card.editor = el('textarea'); card.editor.value = text;
-    const s = card.flow.lastElementChild;
-    if (card.versions.length > 1) {
-      const prev = card.versions[card.versions.length - 2];
-      const { box, del, ins } = renderDiff(prev, text);
-      s.append(box, el('div', 'stats', `Изменения относительно предыдущей версии: −${del} / +${ins} слов. Ниже — текст версии, его можно править перед проверкой.`));
-    } else {
-      s.append(el('div', 'stats', 'Текст можно править перед проверкой — так видно, как редактор ловит выдуманные факты.'));
-    }
-    s.append(card.editor);
-    card.bReview.hidden = false; card.bRevise.hidden = true;
-  };
-  const setVerdict = (card, s, r) => {
-    const ok = r.verdict === 'ПРИНЯТО';
-    finish(s, ok ? 'ok' : 'warn', s.querySelector('small').textContent);
-    s.append(el('div', 'verdict ' + (ok ? 'ok' : 'bad'), 'Вердикт: ' + r.verdict), el('div', 'body', r.notes));
-    card.notes = r.notes; card.bRevise.hidden = ok;
-  };
-  const reset = card => { card.flow.replaceChildren(); card.versions = []; card.editor = null; card.angle = ''; card.notes = ''; card.bForce.hidden = card.bReview.hidden = card.bRevise.hidden = true; };
 
   const run = async (name, force = false) => {
-    const card = cards[name]; reset(card); busy(card, true);
+    const card = cards[name]; card.state = session.cards[name] = newState(); render(card); busy(card, true);
     try {
       if (!force) {
-        const [s, g] = await timed(card, 'Ракурс: можно ли переписать для этой аудитории?', () => post('/step', { step: 'gate', expert: name, item }));
-        s.append(el('div', 'body', (g.possible ? 'ДА. ' : 'НЕТ. ') + g.angle));
-        if (!g.possible) { finish(s, 'bad', 'ракурса нет'); s.append(el('div', 'muted', 'В конвейере эта аудитория новость не получит.')); card.bForce.hidden = false; return; }
-        card.angle = g.angle;
-      } else {
-        const s = stage(card, 'Ракурс'); finish(s, 'warn', 'пропущен'); s.append(el('div', 'body', 'Ракурс не задан — эксперт пишет на своё усмотрение.'));
-      }
-      const [, { article }] = await timed(card, 'Версия 1: эксперт пишет статью (1–3 мин)', () => post('/step', { step: 'rewrite', expert: name, item, angle: card.angle }));
-      addVersion(card, article);
+        const [g, m] = await timed(card, 'Ракурс: можно ли переписать для этой аудитории?', () => post('/step', { step: 'gate', expert: name, item }));
+        push(card, { ...m, kind: 'gate', possible: g.possible, angle: g.angle });
+        if (!g.possible) return;
+        card.state.angle = g.angle;
+      } else push(card, { kind: 'gate-skip', title: 'Ракурс' });
+      const [{ article }, m] = await timed(card, 'Версия 1: эксперт пишет статью (1–3 мин)', () => post('/step', { step: 'rewrite', expert: name, item, angle: card.state.angle }));
+      push(card, { ...m, kind: 'version', text: article });
       await doReview(name, true);
     } catch {} finally { busy(card, false); }
   };
   const doReview = async (name, nested = false) => {
     const card = cards[name]; if (!nested) busy(card, true);
     try {
-      const [s, r] = await timed(card, 'Редактор сверяет с исходником', () => post('/step', { step: 'review', expert: name, item, article: current(card), angle: card.angle }));
-      setVerdict(card, s, r);
+      const [r, m] = await timed(card, 'Редактор сверяет с исходником', () => post('/step', { step: 'review', expert: name, item, article: current(card), angle: card.state.angle }));
+      card.state.notes = r.notes;
+      push(card, { ...m, kind: 'review', verdict: r.verdict, notes: r.notes });
     } catch {} finally { if (!nested) busy(card, false); }
   };
   const doRevise = async name => {
     const card = cards[name]; busy(card, true);
     try {
-      const [, { article }] = await timed(card, `Версия ${card.versions.length + 1}: эксперт дорабатывает по замечаниям`, () => post('/step', { step: 'revise', expert: name, item, article: current(card), notes: card.notes }));
-      addVersion(card, article);
+      const n = versionsOf(card.state).length + 1;
+      const [{ article }, m] = await timed(card, `Версия ${n}: эксперт дорабатывает по замечаниям`, () => post('/step', { step: 'revise', expert: name, item, article: current(card), notes: card.state.notes }));
+      push(card, { ...m, kind: 'version', text: article });
       await doReview(name, true);
     } catch {} finally { busy(card, false); }
   };
@@ -239,14 +293,18 @@
 
   (async () => {
     cfg = await (await fetch('/config')).json();
+    const currentId = load(); renderHistory();
+    const last = history.find(h => h.id === currentId);
+    if (last) showItem(last.item, last);  // после перезагрузки страницы возвращаемся к последнему прогону
     const list = await (await fetch('/news')).json();
     $('news').replaceChildren();
     if (!list.length) $('news').append(el('li', 'muted', 'Ленты пусты — вставьте ссылку на новость.'));
     for (const it of list) {
-      const li = el('li'); li.append(el('span', 'src', host(it.link)), document.createTextNode(it.title));
-      li.onclick = () => { document.querySelectorAll('#news li').forEach(x => x.classList.remove('active')); li.classList.add('active'); showItem(it); };
+      const li = el('li'); li.dataset.link = it.link; li.append(el('span', 'src', host(it.link)), document.createTextNode(it.title));
+      li.onclick = () => showItem(it);
       $('news').append(li);
     }
+    if (item) markNews(item.link);
   })().catch(e => { $('news').replaceChildren(el('li', 'err', 'Ошибка загрузки: ' + e.message)); });
 </script>
 </body>
